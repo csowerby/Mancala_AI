@@ -1,0 +1,145 @@
+PROJECT 3 REPORT ---- Charles Sowerby 805010636
+
+
+
+
+1) Class Design Description: 
+
+Board -- The Board class has two private dynamically allocated arrays of length m_nHoles+1 corresponding to northBeans and southBeans. Because of the dynamic allocation, I wrote a copy constructor and a destructor to avoid memory leakage. 
+
+Player -- The player class contains the private variable m_name which stores the name of the player. The virtual function Player::isInteractive() returns by default false. But I implemented HumanPlayer::isInteractive() to return true. The SmartPlayer class uses it's own private member function smartChoice that will be described below used in SmartPlayer::chooseMove.
+
+Game -- The game class contains private member variables with references to both players. It contains a member variable for the board in play, and contains which Side has the active turn. 
+
+2) SmartPlayer::chooseMove
+
+For this function I wrote another private member function, smartChoice, that takes the Side turn, the active Board, references to integers for bestHole, bestValue, and depth. Also the AlarmClock. The function checked if the game was over, if so, evaluated the position as <climits>'s INT_MAX or INT_MIN (corresponding to +/- infinity).  I expanded the game tree by calling smartChoice recursively, increasing the depth and changing the Side if it was a single move, and keeping all the parameters the same if it was a double move. I evaluated all the positions, and chose the correct move. I limited the algorithm to a depth of 6 layers, or 4.9 seconds (With 6 holes, 6 layers would always be much faster).
+
+My evaluate function would always return the number of beans in North's Pot - South's Pot. This way, the evaluation of the position would always be the same regardless of who's turn it was. 
+
+3) Pseudocode for algorithms - 
+
+Board::sow(in: Side s, int hole, out: endSide, endHole)
+	check if hole is legal move
+	pick up beans in that whole
+	repeatedly, until there are no beans left
+		decrement hole
+		put bean in hole
+		if you get to zero, put a bean in your pot, and move to other side	
+	return endSide and endHole
+
+
+SmartPlayer::smartChoice(in: Side s, board, depth, out: bestHole bestValue)
+	check board position
+	if game is over, return value
+	if game not over - Check timer & depth - return if either is out of bounds
+	create a vector of legal moves
+	loop through legal moves
+		if legal move is a double move
+			call smartChoice with same depth and same side
+		if legal move is a regular move
+			call smartChoice with depth+1 and opponent side
+	return
+
+Game::move()
+	check if game over - return false if so
+	call chooseMove on player who's turn it is
+	sow(chosenMove)
+	if endHole is in the correct pot
+		call move() again
+		return 
+	if endHole was empty and opposite hole isn't
+		send both holes's worth of beans to correct pot
+	change turn
+
+Game::play()
+	check if game is over
+	if either player is interactive
+		while game isn't over
+			move()
+			display()
+			check if game is over
+	if there is a computer player
+		"Press Enter to Start"
+		while game isn't over
+			move()
+			display()
+			"Press Enter to Continue"
+	move all beans left into correct pot
+	print the winner if there is one. 
+
+
+
+4)  Screw-Ups
+
+At first I implemented all of my Board functions with the numbering scheme 
+
+North
+  1 2 3 4 5 6
+0	      0
+  6 5 4 3 2 1
+South
+
+So I had to change everything last minute, which made my code significantly uglier. Hopefully it should work now, however. 
+
+
+5) The following test cases will test my program 
+
+#include "Player.h"
+#include "Board.h"
+#include "Side.h"
+#include <iostream>
+#include <cassert>
+using namespace std;
+
+void doPlayerTests()
+{
+    HumanPlayer hp("Marge");
+    assert(hp.name() == "Marge"  &&  hp.isInteractive());
+    BadPlayer bp("Homer");
+    assert(bp.name() == "Homer"  &&  !bp.isInteractive());
+    SmartPlayer sp("Lisa");
+    assert(sp.name() == "Lisa"  &&  !sp.isInteractive());
+    Board b(3, 2);
+    b.setBeans(SOUTH, 2, 0);
+    cout << "=========" << endl;
+    int n = hp.chooseMove(b, SOUTH);
+    cout << "=========" << endl;
+    assert(n == 1  ||  n == 3);
+    n = bp.chooseMove(b, SOUTH);
+    assert(n == 1  ||  n == 3);
+    n = sp.chooseMove(b, SOUTH);
+    assert(n == 1  ||  n == 3);
+
+int main()
+{
+	HumanPlayer p1("Charlie");
+	assert(p1.name() == Charlie && p1.isInteractive());
+	BadPlayer p2("Jason");
+	Board b (1, 1);
+	b.setBeans(SOUTH, 1, 0);
+	b.setBeans(NORTH, 1, 0);
+	b.setBeans(NORTH, 2, 0);
+	Game g(b, &p1, &p2);
+	g.move();
+	g.status(over, hasWinner, winner);
+	assert(over && hasWinner && winner == SOUTH);
+
+	
+	// Assert Smart Player always wins
+	SmartPlayer p3("Lila");
+	Board b2(6, 4);
+	Game g2(b2, &p3, &p2);
+	g2.play();
+	g2.evaluate(over, hasWinner, winner);
+	assert(over && hasWinner && winner == SOUTH);
+
+
+
+    cout << "Passed all tests" << endl;
+}
+
+
+
+
+
